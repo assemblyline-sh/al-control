@@ -1,6 +1,6 @@
 # al-control: fork from fob-factory and reshape
 
-## Status: IN PROGRESS (~45%)
+## Status: IN PROGRESS (~55%)
 
 al-control is the control room CLI: it watches and operates factories on any host, locally or
 over SSH. It is forked from FinOpsBricks' `fob-factory` with a fresh history (the old history
@@ -46,9 +46,10 @@ from inside its repo.
 - [x] Read-only checks on four real factories: `lines status/list/show`, `stations status`,
       `workpieces count/errors`, dry-run `workpieces clear`
 
-### Phase 3: Publish ❌
-- [ ] Final audit (names, hosts, gitleaks) of the tree
-- [ ] Public repo `assemblyline-sh/al-control`, description, homepage, topics; push
+### Phase 3: Publish 🔄
+- [x] Final audit (names, hosts, gitleaks) of every commit and of the npm package
+- [x] Public repo `assemblyline-sh/al-control`, description, homepage, topics; pushed, tagged
+      `v0.1.0`
 - [ ] npm `@assemblyline/al-control` 0.1.0
 
 ### Phase 4: Take over al-factory's floor commands ❌
