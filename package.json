@@ -1,0 +1,54 @@
+{
+  "name": "@assemblyline/al-control",
+  "version": "0.1.0",
+  "description": "The control room CLI for Assembly Line: watch and operate factories across hosts, locally or over SSH",
+  "type": "module",
+  "bin": {
+    "al-control": "./bin/al-control.js"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/assemblyline-sh/al-control.git"
+  },
+  "keywords": [
+    "assembly-line",
+    "factory",
+    "control-room",
+    "cli",
+    "ssh",
+    "pm2",
+    "workflow-automation"
+  ],
+  "author": "Assembly Line",
+  "license": "Apache-2.0",
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "jest-junit": "^16.0.0"
+  },
+  "homepage": "https://assemblyline.sh",
+  "bugs": {
+    "url": "https://github.com/assemblyline-sh/al-control/issues"
+  }
+}
