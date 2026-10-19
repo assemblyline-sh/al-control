@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-19
+
 ### Added
 - `-f <path>`: name a factory by its folder. `-f .` is the factory you're in, on this machine,
   with no config needed; a configured local factory at that path keeps its name and `keep`
