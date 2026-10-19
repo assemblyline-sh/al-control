@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-19
+
+The first npm release after 0.1.0; it includes 0.2.0.
+
 ### Added
 - Probe query `lines`: every line's stations in order, terminal, live bin counts, orphan counts
   and summary, with no workpiece ids. The probe now holds the line model (station order,
