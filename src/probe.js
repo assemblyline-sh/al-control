@@ -5,7 +5,12 @@
  * can send this file verbatim over SSH and run it with `node -` on a host that
  * has no al-control installed (see transport.js). Locally the client imports
  * `runQuery` in-process. Either way the result is plain JSON — no Maps, no
- * formatting. Grouping lines, topo ordering and position resolution happen
+ * formatting.
+ *
+ * It also owns the line model (station order, terminal station, per-line
+ * summary) so every client renders the same answer from the `lines` query: the
+ * CLI imports these functions, and the control-room desktop app vendors this
+ * file byte for byte instead of porting the logic. Positions and formatting stay
  * client-side (utils/line-state.js).
  *
  * Adapted from al-factory's station-files.js, line-state.js and
@@ -18,7 +23,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const ALL_BINS = ['input', 'doing', 'output', 'failed', 'done'];
+export const ALL_BINS = ['input', 'doing', 'output', 'failed', 'done'];
+export const LIVE_BINS = ['input', 'doing', 'output', 'failed'];
 const MAX_BIN_DEPTH = 4; // depth limit for sub-bin walks (output/invoices/hi-1/ = depth 2)
 const ERROR_MESSAGE_CAP = 2000;
 const READ_FILE_CAP = 20 * 1024 * 1024;
@@ -504,12 +510,217 @@ function listRunningFactories() {
 }
 
 // ---------------------------------------------------------------------------
+// Line model (pure; shared with the CLI and vendored by control-room)
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {{line: string|null, data: any}} StationDef
+ */
+
+/**
+ * Stable code for a station def — short_code, falling back to id.
+ * @param {StationDef} s
+ * @returns {string}
+ */
+export const codeOf = (s) => s.data.short_code || s.data.id;
+
+/**
+ * Index station defs by every reference form they answer to, so a dependency
+ * edge written as short_code or id finds its peer.
+ * @param {StationDef[]} members
+ * @returns {Map<string, StationDef>}
+ */
+export function indexStationsByRef(members) {
+  const by_ref = new Map();
+  for (const s of members) {
+    by_ref.set(codeOf(s), s);
+    if (s.data.id) by_ref.set(s.data.id, s);
+    if (s.data.short_code) by_ref.set(s.data.short_code, s);
+  }
+  return by_ref;
+}
+
+/**
+ * Normalise one `dependencies` entry (bare id string, or object with
+ * short_code/id) to a reference string.
+ * @param {any} dep
+ * @returns {string|undefined}
+ */
+export function dependencyRef(dep) {
+  return typeof dep === 'string' ? dep : dep?.short_code || dep?.id;
+}
+
+/**
+ * Resolve a station reference (short_code or orchestrator id) to its display
+ * code; unchanged when the peer isn't among `stations`.
+ * @param {string} ref
+ * @param {Map<string, StationDef>|StationDef[]} stations
+ * @returns {string}
+ */
+export function resolveStationRef(ref, stations) {
+  const by_ref = stations instanceof Map ? stations : indexStationsByRef(stations);
+  const match = by_ref.get(ref);
+  return match ? codeOf(match) : ref;
+}
+
+/**
+ * Topologically sort one line's station defs by `dependencies`, with an
+ * alphabetical pre-sort for stable sibling order.
+ * @param {StationDef[]} members
+ * @returns {StationDef[]}
+ */
+export function topoSortStations(members) {
+  const by_ref = indexStationsByRef(members);
+  /** @param {StationDef} s */
+  const depsOf = (s) => (s.data.dependencies || [])
+    .map(dependencyRef)
+    .map((/** @type {string} */ ref) => by_ref.get(ref))
+    .filter(Boolean);
+
+  const sorted = [...members].sort((a, b) => codeOf(a).localeCompare(codeOf(b)));
+  const visited = new Set();
+  /** @type {StationDef[]} */
+  const result = [];
+  /** @param {StationDef} s */
+  const visit = (s) => {
+    const code = codeOf(s);
+    if (visited.has(code)) return;
+    visited.add(code);
+    for (const dep of depsOf(s)) visit(dep);
+    result.push(s);
+  };
+  for (const s of sorted) visit(s);
+  return result;
+}
+
+/**
+ * Terminal = station no in-line peer depends on. With several sinks, the one
+ * latest in topo order.
+ * @param {StationDef[]} ordered - From topoSortStations
+ * @returns {string}
+ */
+export function computeTerminal(ordered) {
+  if (ordered.length === 0) return '';
+  const by_ref = indexStationsByRef(ordered);
+  const depended_on = new Set();
+  for (const s of ordered) {
+    for (const d of s.data.dependencies || []) {
+      const ref = dependencyRef(d);
+      if (ref && by_ref.has(ref)) depended_on.add(resolveStationRef(ref, by_ref));
+    }
+  }
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    const c = codeOf(ordered[i]);
+    if (!depended_on.has(c)) return c;
+  }
+  return codeOf(ordered[ordered.length - 1]);
+}
+
+/**
+ * Station defs grouped by line, each line's stations in dependency order.
+ * @param {StationDef[]} stations
+ * @returns {Object<string, {stations: string[], terminal: string}>}
+ */
+export function groupLines(stations) {
+  /** @type {Map<string, StationDef[]>} */
+  const grouped = new Map();
+  for (const def of stations) {
+    if (!def.line) continue;
+    if (!grouped.has(def.line)) grouped.set(def.line, []);
+    grouped.get(def.line)?.push(def);
+  }
+  /** @type {Object<string, {stations: string[], terminal: string}>} */
+  const lines = {};
+  for (const [code, members] of grouped) {
+    const ordered = topoSortStations(members);
+    lines[code] = { stations: ordered.map(codeOf), terminal: computeTerminal(ordered) };
+  }
+  return lines;
+}
+
+/**
+ * @typedef {object} LineSummary
+ * @property {number} in_flight - input + doing + output, excluding terminal output
+ * @property {number} stuck - failed across the line
+ * @property {number} finished - terminal-station output
+ * @property {string[]} stuck_locations - e.g. '3 at VM2/failed'
+ * @property {{count: number, at: string|null}} biggest_flow - fullest in-flight bin
+ */
+
+/**
+ * Per-line totals from live bin counts (`done` ignored).
+ * @param {{stations: string[], terminal: string}} line
+ * @param {Object<string, Object<string, number|null>>} counts - counts[station][bin], null when the bin is missing
+ * @returns {LineSummary}
+ */
+export function summarizeCounts(line, counts) {
+  let in_flight = 0;
+  let stuck = 0;
+  let finished = 0;
+  /** @type {string[]} */
+  const stuck_locations = [];
+  /** @type {{count: number, at: string|null}} */
+  let biggest_flow = { count: 0, at: null };
+
+  for (const station of line.stations) {
+    const is_terminal = station === line.terminal;
+    for (const bin of LIVE_BINS) {
+      const n = counts[station]?.[bin];
+      if (n === null || n === undefined) continue;
+      if (bin === 'failed') {
+        stuck += n;
+        if (n > 0) stuck_locations.push(`${n} at ${station}/failed`);
+      } else if (is_terminal && bin === 'output') {
+        finished += n;
+      } else {
+        in_flight += n;
+        if (n > biggest_flow.count) biggest_flow = { count: n, at: `${station}/${bin}` };
+      }
+    }
+  }
+  return { in_flight, stuck, finished, stuck_locations, biggest_flow };
+}
+
+/**
+ * The `lines` query: every line with its stations in order, terminal, live bin
+ * counts and summary, from one read of the factory. Counts only, no workpiece
+ * ids, so it stays small enough to poll.
+ * @param {string} root
+ */
+function readLines(root) {
+  const { stations, lines: line_defs, factory, bins, orphans } = readState(root);
+  /** @type {Object<string, Object<string, number|null>>} */
+  const counts = {};
+  for (const [code, by_bin] of Object.entries(bins)) {
+    counts[code] = {};
+    for (const [bin, ids] of Object.entries(by_bin)) counts[code][bin] = ids === null ? null : Object.keys(ids).length;
+  }
+  const lines = {};
+  for (const [code, line] of Object.entries(groupLines(stations))) {
+    const def = line_defs[code] ?? {};
+    const line_counts = Object.fromEntries(line.stations.map((st) => [st, counts[st] ?? {}]));
+    lines[code] = {
+      code,
+      name: def.name ?? null,
+      location: def.location ?? null,
+      stations: line.stations,
+      terminal: line.terminal,
+      counts: line_counts,
+      orphans: Object.fromEntries(line.stations.filter((st) => orphans[st]).map((st) => [st, Object.keys(orphans[st]).length])),
+      summary: summarizeCounts(line, line_counts),
+    };
+  }
+  return { factory, lines };
+}
+
+// ---------------------------------------------------------------------------
 // Entry points
 // ---------------------------------------------------------------------------
 
 /**
  * @typedef {{type: 'defs', path: string}
  *   | {type: 'state', path: string}
+ *   | {type: 'lines', path: string}
  *   | {type: 'logs', path: string, dirs: string[]}
  *   | {type: 'errors', path: string, dirs: string[]}
  *   | {type: 'ages', path: string, dirs: string[]}
@@ -535,6 +746,10 @@ export function runQuery(query) {
     case 'state': {
       const root = requireFactoryRoot(query.path);
       return { root, ...readState(root) };
+    }
+    case 'lines': {
+      const root = requireFactoryRoot(query.path);
+      return { root, ...readLines(root) };
     }
     case 'logs': {
       const root = requireFactoryRoot(query.path);

@@ -1,6 +1,6 @@
 # al-control: fork from fob-factory and reshape
 
-## Status: IN PROGRESS (~90%) — Phase 5 waits on the control-room fork
+## Status: COMPLETE — release 0.3.0 to npm, then delete this file
 
 al-control is the control room CLI: it watches and operates factories on any host, locally or
 over SSH. It is forked from FinOpsBricks' `fob-factory` with a fresh history (the old history
@@ -63,10 +63,15 @@ from inside its repo.
       `al-factory lines status` → `al-control lines status -f .`; synced to the remote host
 - [x] al-factory retired: repo archived, npm package deprecated
 
-### Phase 5: Shared logic ❌
-Done together with the control-room fork (fob-watch); nothing here blocks using al-control.
-- [ ] The probe computes line state, so control-room (the desktop app) can render it without a
-      Rust port; a byte check on the probe copy it vendors
+### Phase 5: Shared logic ✅
+- [x] The probe computes the line model: `topoSortStations`, `computeTerminal`, `groupLines`,
+      `summarizeCounts` live in `src/probe.js`; `src/utils/line-state.js` imports them (one copy)
+- [x] Probe query `lines`: order, terminal, counts, orphans and summary, no ids. `lines status`
+      uses it; output unchanged locally and over SSH, 4 KB instead of 403 KB on factory-alex
+- [x] `@assemblyline/al-control/probe` export, and a test that the probe imports only `node:`
+      built-ins. The byte check itself lives in control-room's CI when it vendors the file
+      (cli-architecture.md, Phase 6)
+- [x] Decision 0006; probe architecture note updated
 
 ## Related Files
 

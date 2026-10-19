@@ -6,6 +6,10 @@
   "bin": {
     "al-control": "./bin/al-control.js"
   },
+  "exports": {
+    "./probe": "./src/probe.js",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"

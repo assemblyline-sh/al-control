@@ -18,6 +18,16 @@ export function loadDefs(factory) {
 }
 
 /**
+ * Every line's station order, terminal, live bin counts and summary — the
+ * probe's `lines` query. Counts only, so it is cheap to poll over SSH.
+ * @param {import('../config.js').FactoryContext} factory
+ * @returns {{root: string, factory: object|null, lines: Object<string, {code: string, name: string|null, location: string|null, stations: string[], terminal: string, counts: Object<string, Object<string, number|null>>, orphans: Object<string, number>, summary: import('../probe.js').LineSummary}>}}
+ */
+export function loadLineSummaries(factory) {
+  return probe(factory.host, { type: 'lines', path: factory.path });
+}
+
+/**
  * Live per-line state, plus the station defs it was built from and the
  * orphaned failed folders (no pointer.json) per station.
  * @param {import('../config.js').FactoryContext} factory

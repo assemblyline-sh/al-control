@@ -13,16 +13,29 @@
  *   - Position rule: walk stations terminal → source; at each, check
  *     output > doing > input > failed; first match wins. done ignored.
  *
- * Pure logic copied from al-factory's line-state.js; the filesystem half lives
- * in ../probe.js.
+ * Station order, terminal and summaries come from ../probe.js (one copy, shared
+ * with control-room); this module adds the Map view and workpiece positions.
  */
 
-export const ALL_BINS = ['input', 'doing', 'output', 'failed', 'done'];
-export const LIVE_BINS = ['input', 'doing', 'output', 'failed'];
+import {
+  ALL_BINS,
+  LIVE_BINS,
+  codeOf,
+  indexStationsByRef,
+  dependencyRef,
+  resolveStationRef,
+  topoSortStations,
+  computeTerminal,
+  groupLines,
+  summarizeCounts,
+} from '../probe.js';
+
+export { ALL_BINS, LIVE_BINS, codeOf, indexStationsByRef, dependencyRef, resolveStationRef, topoSortStations, computeTerminal };
+
 const LIVE_PRIORITY = ['output', 'doing', 'input', 'failed']; // most-advanced first
 
 /**
- * @typedef {{line: string|null, data: object}} StationDef
+ * @typedef {import('../probe.js').StationDef} StationDef
  */
 
 /**
@@ -46,119 +59,23 @@ const LIVE_PRIORITY = ['output', 'doing', 'input', 'failed']; // most-advanced f
  * @property {boolean} [anomaly] - true when only present in done (not live)
  */
 
-/** Stable code for a station def — short_code, falling back to id. */
-export const codeOf = (s) => s.data.short_code || s.data.id;
-
-/**
- * Index station defs by every reference form they answer to, so a dependency
- * edge written as short_code or id finds its peer.
- * @param {StationDef[]} members
- * @returns {Map<string, StationDef>}
- */
-export function indexStationsByRef(members) {
-  const by_ref = new Map();
-  for (const s of members) {
-    by_ref.set(codeOf(s), s);
-    if (s.data.id) by_ref.set(s.data.id, s);
-    if (s.data.short_code) by_ref.set(s.data.short_code, s);
-  }
-  return by_ref;
-}
-
-/**
- * Normalise one `dependencies` entry (bare id string, or object with
- * short_code/id) to a reference string.
- */
-export function dependencyRef(dep) {
-  return typeof dep === 'string' ? dep : dep?.short_code || dep?.id;
-}
-
-/**
- * Resolve a station reference (short_code or orchestrator id) to its display
- * code; unchanged when the peer isn't among `stations`.
- * @param {string} ref
- * @param {Map<string, StationDef>|StationDef[]} stations
- */
-export function resolveStationRef(ref, stations) {
-  const by_ref = stations instanceof Map ? stations : indexStationsByRef(stations);
-  const match = by_ref.get(ref);
-  return match ? codeOf(match) : ref;
-}
-
-/**
- * Topologically sort one line's station defs by `dependencies`, with an
- * alphabetical pre-sort for stable sibling order.
- * @param {StationDef[]} members
- * @returns {StationDef[]}
- */
-export function topoSortStations(members) {
-  const by_ref = indexStationsByRef(members);
-  const depsOf = (s) => (s.data.dependencies || [])
-    .map(dependencyRef)
-    .map((ref) => by_ref.get(ref))
-    .filter(Boolean);
-
-  const sorted = [...members].sort((a, b) => codeOf(a).localeCompare(codeOf(b)));
-  const visited = new Set();
-  const result = [];
-  const visit = (s) => {
-    const code = codeOf(s);
-    if (visited.has(code)) return;
-    visited.add(code);
-    for (const dep of depsOf(s)) visit(dep);
-    result.push(s);
-  };
-  for (const s of sorted) visit(s);
-  return result;
-}
-
-/**
- * Terminal = station no in-line peer depends on. With several sinks, the one
- * latest in topo order.
- */
-function computeTerminal(ordered) {
-  if (ordered.length === 0) return '';
-  const by_ref = indexStationsByRef(ordered);
-  const depended_on = new Set();
-  for (const s of ordered) {
-    for (const d of s.data.dependencies || []) {
-      const ref = dependencyRef(d);
-      if (by_ref.has(ref)) depended_on.add(resolveStationRef(ref, by_ref));
-    }
-  }
-  for (let i = ordered.length - 1; i >= 0; i--) {
-    const c = codeOf(ordered[i]);
-    if (!depended_on.has(c)) return c;
-  }
-  return codeOf(ordered[ordered.length - 1]);
-}
-
 /**
  * Build per-line state from a probe `state` result.
  * @param {{stations: StationDef[], bins: Object<string, Object<string, Object<string, string>|null>>}} state
  * @returns {Object<string, LineState>} keyed by line code
  */
 export function buildLineState(state) {
-  const grouped = new Map();
-  for (const def of state.stations) {
-    if (!def.line) continue;
-    if (!grouped.has(def.line)) grouped.set(def.line, []);
-    grouped.get(def.line).push(def);
-  }
-
   const lines = {};
-  for (const [line_code, members] of grouped) {
-    const ordered = topoSortStations(members);
-    const station_codes = ordered.map(codeOf);
+  for (const [line_code, line] of Object.entries(groupLines(state.stations))) {
     const bins = {};
-    for (const station of station_codes) {
+    for (const station of line.stations) {
       bins[station] = {};
       for (const bin of ALL_BINS) {
         const listing = state.bins[station]?.[bin];
         bins[station][bin] = listing ? new Map(Object.entries(listing)) : null;
       }
     }
-    lines[line_code] = { code: line_code, stations: station_codes, terminal: computeTerminal(ordered), bins };
+    lines[line_code] = { code: line_code, stations: line.stations, terminal: line.terminal, bins };
   }
   return lines;
 }
@@ -296,29 +213,13 @@ export function workpieceRelDir(pos, workpiece_id) {
  * @param {LineState} line
  */
 export function summarizeLine(line) {
-  let in_flight = 0;
-  let stuck = 0;
-  let finished = 0;
-  const stuck_locations = [];
-  let biggest_flow = { count: 0, at: null };
-
+  const counts = {};
   for (const station of line.stations) {
-    const bins = line.bins[station];
-    const is_terminal = station === line.terminal;
+    counts[station] = {};
     for (const bin of LIVE_BINS) {
-      const map = bins[bin];
-      if (!map) continue;
-      const n = map.size;
-      if (bin === 'failed') {
-        stuck += n;
-        if (n > 0) stuck_locations.push(`${n} at ${station}/failed`);
-      } else if (is_terminal && bin === 'output') {
-        finished += n;
-      } else {
-        in_flight += n;
-        if (n > biggest_flow.count) biggest_flow = { count: n, at: `${station}/${bin}` };
-      }
+      const map = line.bins[station][bin];
+      counts[station][bin] = map ? map.size : null;
     }
   }
-  return { in_flight, stuck, finished, stuck_locations, biggest_flow };
+  return summarizeCounts(line, counts);
 }

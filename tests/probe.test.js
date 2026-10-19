@@ -271,3 +271,53 @@ describe('line model over probe output', () => {
     expect(summarizeLine(lines.VM)).toMatchObject({ in_flight: 1, stuck: 0, finished: 1 });
   });
 });
+
+describe('lines query (the probe computes the line model)', () => {
+  test('stations in order, terminal, counts, summary; no workpiece ids', () => {
+    const out = runQuery({ type: 'lines', path: makeFactory() });
+    expect(out.lines.VM).toEqual({
+      code: 'VM',
+      name: 'Vendor',
+      location: 'w',
+      stations: ['VM1', 'VM2'],
+      terminal: 'VM2',
+      counts: {
+        VM1: { input: null, doing: null, output: 1, failed: null, done: null },
+        VM2: { input: null, doing: null, output: 1, failed: 0, done: null },
+      },
+      orphans: {},
+      summary: { in_flight: 1, stuck: 0, finished: 1, stuck_locations: [], biggest_flow: { count: 1, at: 'VM1/output' } },
+    });
+    expect(JSON.stringify(out)).not.toContain('wp-1');
+  });
+
+  test('its summary matches the CLI summary over the full state', () => {
+    const root = makeFactory();
+    const lines = buildLineState(runQuery({ type: 'state', path: root }));
+    expect(runQuery({ type: 'lines', path: root }).lines.VM.summary).toEqual(summarizeLine(lines.VM));
+  });
+
+  test('the same over node - on stdin', () => {
+    const root = makeFactory();
+    const source = readFileSync(new URL('../src/probe.js', import.meta.url), 'utf8');
+    const out = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-'], {
+      input: `${source}\nmain(${JSON.stringify({ type: 'lines', path: root })});\n`,
+      encoding: 'utf8',
+    }));
+    expect(out).toEqual({ ok: true, data: runQuery({ type: 'lines', path: root }) });
+  });
+});
+
+describe('probe.js stays one self-contained file', () => {
+  test('imports only node: built-ins', () => {
+    const source = readFileSync(new URL('../src/probe.js', import.meta.url), 'utf8');
+    const specifiers = [...source.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+    expect(specifiers.length).toBeGreaterThan(0);
+    expect(specifiers.filter((s) => !s.startsWith('node:'))).toEqual([]);
+  });
+
+  test('the package exports it, so other apps can vendor and byte-check it', async () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(pkg.exports['./probe']).toBe('./src/probe.js');
+  });
+});

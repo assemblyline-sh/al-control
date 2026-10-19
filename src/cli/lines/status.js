@@ -1,6 +1,6 @@
 import { formatTable, formatHeader, formatField } from '../../utils/format.js';
 import { summarizeLine, LIVE_BINS } from '../../utils/line-state.js';
-import { loadLines } from '../../utils/factory-data.js';
+import { loadLines, loadLineSummaries } from '../../utils/factory-data.js';
 import { watchRender, DEFAULT_WATCH_INTERVAL_SECS } from '../../utils/watch-render.js';
 
 /**
@@ -23,19 +23,24 @@ export async function statusLineHandler(argv, factory) {
   }
   const interval_secs = typeof interval === 'number' ? interval : DEFAULT_WATCH_INTERVAL_SECS;
 
+  const noLines = () => {
+    if (json) console.log(JSON.stringify({}, null, 2));
+    else console.log(`No lines in ${factory.name}/.orchestrator/stations/. Run "al-orc stations pull --all" in the factory repo.`);
+  };
+
   const renderOnce = () => {
-    const { lines } = loadLines(factory);
-
-    if (Object.keys(lines).length === 0) {
-      if (json) console.log(JSON.stringify({}, null, 2));
-      else console.log(`No lines in ${factory.name}/.orchestrator/stations/. Run "al-orc stations pull --all" in the factory repo.`);
-      return;
-    }
-
     if (!line_arg) {
-      renderLineSummary(lines, json);
+      // Counts only: the probe computes each line's summary.
+      const { lines } = loadLineSummaries(factory);
+      if (Object.keys(lines).length === 0) return noLines();
+      const summaries = {};
+      for (const [code, line] of Object.entries(lines)) summaries[code] = line.summary;
+      renderLineSummary(summaries, json);
       return;
     }
+
+    const { lines } = loadLines(factory);
+    if (Object.keys(lines).length === 0) return noLines();
 
     const ls = lines[line_arg];
     if (!ls) {
@@ -58,9 +63,7 @@ export async function statusLineHandler(argv, factory) {
   renderOnce();
 }
 
-function renderLineSummary(lines, json) {
-  const summaries = {};
-  for (const ls of Object.values(lines)) summaries[ls.code] = summarizeLine(ls);
+function renderLineSummary(summaries, json) {
 
   if (json) {
     console.log(JSON.stringify(summaries, null, 2));

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Probe query `lines`: every line's stations in order, terminal, live bin counts, orphan counts
+  and summary, with no workpiece ids. The probe now holds the line model (station order,
+  terminal, summary); the CLI imports it instead of keeping a copy (decision 0006).
+- `@assemblyline/al-control/probe` export, so an app that bundles the probe can vendor it and
+  byte-check its copy against a pinned version.
+
+### Changed
+- `lines status` with no line uses the `lines` query: same output, a fraction of the data over
+  SSH.
+
 ## [0.2.0] - 2026-10-19
 
 ### Added
