@@ -4,7 +4,8 @@
  * Pattern: al-control <resource> <action> [target] [-f <factory>] [--host <host>]
  *
  * One host at a time (`hosts use`, or `--host` per command). Commands about a
- * single factory require `-f`; the current directory is never consulted.
+ * single factory require `-f`: a configured name, or a path (`-f .` for the factory
+ * you're in). The current directory is never used unless you type it.
  */
 
 import { readFileSync } from 'node:fs';
@@ -27,6 +28,7 @@ import { errorsHandler } from './workpieces/errors.js';
 import { catHandler } from './workpieces/cat.js';
 import { openHandler } from './workpieces/open.js';
 import { clearHandler } from './workpieces/clear.js';
+import { requeueHandler } from './workpieces/requeue.js';
 import { listProcsHandler } from './procs/list.js';
 import {
   startFactoryHandler,
@@ -88,7 +90,7 @@ function withFactories(handler) {
 function optionalFactoryOption(yargs) {
   return localOptions(yargs).option('factory', {
     alias: 'f',
-    describe: 'Only this factory (default: every factory on the host)',
+    describe: 'Only this factory: a name, or a path such as . (default: every factory on the host)',
     type: 'string',
   });
 }
@@ -96,7 +98,7 @@ function optionalFactoryOption(yargs) {
 function factoryOption(yargs) {
   return localOptions(yargs).option('factory', {
     alias: 'f',
-    describe: 'Factory name on the current host (required)',
+    describe: 'Factory: a name on the current host, or a path such as . (required)',
     type: 'string',
   });
 }
@@ -217,7 +219,20 @@ export function run(args) {
           }),
         withFactory(clearHandler, { frame: false }),
       )
-      .demandCommand(1, 'Specify an action: list, show, watch, count, errors, cat, open, clear'))
+      .command(
+        'requeue [id]',
+        'Move failed workpieces (--bin STATION/failed), or one failed or done workpiece (id), back to their station\'s input. Dry run unless --yes.',
+        (y) => factoryOption(y.positional('id', { describe: 'One workpiece (exact or unique substring) in a failed or done bin', type: 'string' }))
+          .option('bin', { describe: 'Every workpiece in this failed bin (STATION/failed)', type: 'string' })
+          .option('yes', { describe: 'Actually move (default: dry run)', type: 'boolean' })
+          .check((a) => {
+            if (!a.id && !a.bin) throw new Error('Give --bin STATION/failed, or a workpiece id.');
+            if (a.id && a.bin) throw new Error('Give either --bin or a workpiece id, not both.');
+            return true;
+          }),
+        withFactory(requeueHandler, { frame: false }),
+      )
+      .demandCommand(1, 'Specify an action: list, show, watch, count, errors, cat, open, clear, requeue'))
     .command('procs', 'Factory processes on the current host (pm2)', (yargs) => yargs
       .usage('$0 procs <action> [-f <factory>]')
       .command('list', 'Every running factory on the host', (y) => localOptions(y).option('json', jsonOption), withHost(listProcsHandler))
@@ -237,7 +252,7 @@ export function run(args) {
         factories: ['list'],
         lines: ['list', 'show', 'status'],
         stations: ['status'],
-        workpieces: ['list', 'show', 'watch', 'count', 'errors', 'cat', 'open', 'clear'],
+        workpieces: ['list', 'show', 'watch', 'count', 'errors', 'cat', 'open', 'clear', 'requeue'],
         procs: ['list', 'start', 'stop', 'restart', 'logs', 'monit'],
         config: ['show'],
       };

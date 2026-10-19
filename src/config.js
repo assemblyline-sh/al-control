@@ -25,7 +25,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, basename } from 'node:path';
 import yaml from 'js-yaml';
 
 export const LOCAL_HOST = 'local';
@@ -174,16 +174,62 @@ export function resolveHost(argv) {
  */
 
 /**
- * Resolve host + the `-f` factory on it. `-f` is always required — the current
- * directory is never consulted.
+ * Whether a `-f` value is a path rather than a configured name. Names never hold a `/`.
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isPathTarget(value) {
+  return value === '.' || value === '..' || value.startsWith('~') || value.includes('/');
+}
+
+/** @param {string} p */
+function expandHome(p) {
+  return p === '~' || p.startsWith('~/') ? join(homedir(), p.slice(1)) : p;
+}
+
+/**
+ * `-f <path>`: a factory named by its folder. Without `--host` the path is on this machine
+ * (relative to the current directory) and needs no config; a configured local factory at the
+ * same path lends its name and `keep` bins. With `--host`, the path is on that host as written.
+ * Typing the path is the explicit target decision 0003 asks for; nothing falls back to the cwd.
+ * @param {{host?: string, factory: string}} argv
+ * @returns {FactoryContext}
+ */
+function resolvePathTarget(argv) {
+  if (argv.host) {
+    const host = resolveHost(argv);
+    const name = basename(argv.factory.replace(/\/+$/, '')) || argv.factory;
+    host.factories = { ...host.factories, [name]: argv.factory };
+    host.keep = { ...host.keep, [name]: host.keep[name] ?? [] };
+    return { ...factoryContext(host, name, argv.host), flags: `-f ${argv.factory} --host ${argv.host}` };
+  }
+  const abs = resolve(expandHome(argv.factory));
+  let name = basename(abs);
+  let keep = [];
+  if (existsSync(configPath())) {
+    const local = loadConfig().hosts[LOCAL_HOST];
+    for (const [n, entry] of Object.entries(local?.factories ?? {})) {
+      const e = factoryEntry(entry);
+      if (resolve(expandHome(e.path)) === abs) ({ name, keep } = { name: n, keep: e.keep });
+    }
+  }
+  /** @type {HostContext} */
+  const host = { name: LOCAL_HOST, is_local: true, factories: { [name]: abs }, keep: { [name]: keep } };
+  return { host, name, path: abs, keep, flags: `-f ${argv.factory}` };
+}
+
+/**
+ * Resolve host + the `-f` factory on it: a configured name, or a path (`-f .`). `-f` is always
+ * required — the current directory is never consulted on its own.
  * @param {{host?: string, factory?: string}} argv
  * @returns {FactoryContext}
  */
 export function resolveFactory(argv) {
+  if (argv.factory && isPathTarget(argv.factory)) return resolvePathTarget({ ...argv, factory: argv.factory });
   const host = resolveHost(argv);
   const names = Object.keys(host.factories);
   if (!argv.factory) {
-    throw new Error(`Specify a factory with -f <name>. Factories on ${host.name}: ${names.join(', ') || '(none)'}`);
+    throw new Error(`Specify a factory with -f <name>, or -f . for the one you're in. Factories on ${host.name}: ${names.join(', ') || '(none)'}`);
   }
   const p = host.factories[argv.factory];
   if (!p) {

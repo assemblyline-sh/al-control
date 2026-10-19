@@ -78,7 +78,7 @@ describe('resolveHost', () => {
 describe('resolveFactory', () => {
   test('-f is required, even with a single factory', () => {
     writeConfig(VALID);
-    expect(() => resolveFactory({})).toThrow(/Specify a factory with -f <name>\. Factories on local: factory-a/);
+    expect(() => resolveFactory({})).toThrow(/Specify a factory with -f <name>, or -f \. for the one you're in\. Factories on local: factory-a/);
   });
 
   test('factory must exist on the target host', () => {
@@ -127,5 +127,39 @@ describe('resolveFactories', () => {
     writeConfig('current_host: local\nhosts:\n  local:\n    factories:\n      a: ~/a\n      b: ~/b\n');
     expect(resolveFactories({}).factories.map((w) => w.name)).toEqual(['a', 'b']);
     expect(resolveFactories({ factory: 'b' }).factories.map((w) => w.name)).toEqual(['b']);
+  });
+});
+
+describe('resolveFactory with a path', () => {
+  test('a path needs no config and resolves against the current directory', () => {
+    process.env.AL_CONTROL_CONFIG_DIR = mkdtempSync(path.join(tmpdir(), 'al-control-none-'));
+    const f = resolveFactory({ factory: '.' });
+    expect(f.host.is_local).toBe(true);
+    expect(f.path).toBe(process.cwd());
+    expect(f.name).toBe(path.basename(process.cwd()));
+    expect(f.keep).toEqual([]);
+    expect(f.flags).toBe('-f .');
+  });
+
+  test('a path matching a configured local factory takes its name and keep bins', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'factory-x-'));
+    writeConfig(`current_host: prod\nhosts:\n  local:\n    factories:\n      acme:\n        path: ${dir}\n        keep: [A1/done]\n  prod:\n    ssh: prod-box\n    factories: {}\n`);
+    const f = resolveFactory({ factory: `${dir}/` });
+    expect(f.host.name).toBe('local');
+    expect(f.name).toBe('acme');
+    expect(f.keep).toEqual(['A1/done']);
+  });
+
+  test('with --host the path is on that host, as written', () => {
+    writeConfig(VALID);
+    const f = resolveFactory({ factory: '/srv/other-factory', host: 'prod' });
+    expect(f.host.name).toBe('prod');
+    expect(f.name).toBe('other-factory');
+    expect(f.path).toBe('/srv/other-factory');
+  });
+
+  test('a name is still looked up in the config', () => {
+    writeConfig(VALID);
+    expect(() => resolveFactory({ factory: 'nope' })).toThrow(/No factory 'nope'/);
   });
 });

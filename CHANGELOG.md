@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `-f <path>`: name a factory by its folder. `-f .` is the factory you're in, on this machine,
+  with no config needed; a configured local factory at that path keeps its name and `keep`
+  bins. With `--host`, the path is on that host.
+- `workpieces requeue --bin STATION/failed` or `requeue <id>`: move failed workpieces (or one
+  failed or done workpiece) back to their station's input. Dry run unless `--yes`.
+
 ## [0.1.0] - 2026-10-19
 
 First release as `@assemblyline/al-control`, forked from `fob-factory` 0.1.0 (FinOpsBricks).

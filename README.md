@@ -3,6 +3,7 @@
 The control room CLI for [Assembly Line](https://assemblyline.sh): watch and operate factories on this machine or on machines you reach over SSH. See what's in every bin, why workpieces failed, and start or stop factory sessions.
 
 ```bash
+al-control lines status -f .                    # the factory you're in
 al-control hosts use build-box
 al-control factories list
 al-control lines status -f factory-globex
@@ -29,7 +30,7 @@ al-control workpieces errors              # why things failed, on every factory
 ```
 
 - **One config, one host at a time.** Like a kubectl context: `hosts use` picks the host, `--host` overrides it once.
-- **Factories are named, never inferred.** Per-factory commands take `-f <name>`; the current directory is ignored.
+- **Factories are named, never inferred.** Per-factory commands take `-f <name>` from the config, or a path: `-f .` is the factory you're standing in, and needs no config. The current directory is never used unless you type it.
 - **Nothing installed on remote hosts.** A small read-only script is piped to the host's `node` over your own `ssh`, so `~/.ssh/config`, keys and Tailscale SSH all just work.
 
 ## Install
@@ -73,6 +74,7 @@ Factory paths are paths on that host. Remote hosts need key-based SSH (no passwo
 | `workpieces list` / `show <id>` / `watch [id]` | yes | Where each workpiece is, its journey (and error, files), a live tail |
 | `workpieces count [failed\|done\|finished]` / `errors` | optional | Failed, done and finished counts; failures grouped by error. All factories unless `-f` |
 | `workpieces cat <id> <file>` / `open <id>` | yes | Read a file from a workpiece folder; open the folder (a shell in it, on a remote host) |
+| `workpieces requeue --bin STATION/failed` / `requeue <id>` | yes | Move failed workpieces (or one failed or done workpiece) back to their station's input to run again. Dry run unless `--yes` |
 | `workpieces clear --bin done\|finished` / `clear <id>` | yes | Delete done or finished workpieces, or one workpiece's copies; `--older-than <days>`. Dry run unless `--yes`; kept and conveyor-fed bins are skipped |
 | `procs list` | | Every factory process on the host |
 | `procs start` / `stop` / `restart` / `logs` | yes | pm2 control for one factory |

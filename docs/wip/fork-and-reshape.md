@@ -1,6 +1,6 @@
 # al-control: fork from fob-factory and reshape
 
-## Status: IN PROGRESS (~55%)
+## Status: IN PROGRESS (~70%)
 
 al-control is the control room CLI: it watches and operates factories on any host, locally or
 over SSH. It is forked from FinOpsBricks' `fob-factory` with a fresh history (the old history
@@ -53,10 +53,12 @@ from inside its repo.
 - [ ] npm `@assemblyline/al-control` 0.1.0
 
 ### Phase 4: Take over al-factory's floor commands ❌
-- [ ] An explicit path as the target: `-f .` (or any path) on the local host, with no config
+- [x] An explicit path as the target: `-f .` (or any path) on the local host, with no config
       entry. Typing the path keeps decision 0003's rule (no silent cwd fallback)
-- [ ] Respect the factory's `FACTORY_LOCATION`: show only that location's lines when asked
-- [ ] `workpieces requeue` (the probe already supports it)
+- [x] `workpieces requeue --bin STATION/failed` or `requeue <id>` (tested; tried on a scratch
+      factory: failed → input, error files dropped, `requeued` logged)
+- Dropped: filtering lines by `FACTORY_LOCATION`. al-factory never did it, and another
+  location's lines only show empty bins here, since their bins live on that location's host
 - [ ] Factory CLAUDE.md files: `al-factory lines status` → `al-control lines status -f .`
 - [ ] Retire al-factory (archive its repo)
 
