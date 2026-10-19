@@ -7,6 +7,7 @@ import {
 } from '../../utils/line-state.js';
 import { loadDefs } from '../../utils/factory-data.js';
 import { formatHeader, formatField, formatTable, formatSection } from '../../utils/format.js';
+import { conveyorMoves } from '../../utils/conveyors.js';
 
 /**
  * `al-control lines show <line> -f <factory>` — definitional view of a line:
@@ -61,10 +62,8 @@ export async function showLineHandler(argv, factory) {
   // move_files steps describe the source → target bin flow.
   const conveyors = [];
   for (const m of ordered) {
-    for (const step of m.data.steps || []) {
-      if (step.slug === 'lib-factory:move_files' && step.config) {
-        conveyors.push([codeOf(m), step.config.source_bin || '—', step.config.target_bin || '—', step.config.mode || '—']);
-      }
+    for (const move of conveyorMoves(m.data)) {
+      conveyors.push([codeOf(m), move.source_bin, move.target_bin || '—', move.mode || '—']);
     }
   }
   if (conveyors.length > 0) {

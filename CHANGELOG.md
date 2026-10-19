@@ -23,6 +23,11 @@ The history starts fresh here.
   detection, `procs start`, and the conveyor guard on `workpieces clear`
   (`lib-factory:move_files`). The probe returns the factory's `.orchestrator/factory.json`.
 
+### Fixed
+- The conveyor guard on `workpieces clear` (and `lines show`) reads `move_files` steps that
+  use a `moves` array, not only a single `source_bin`; fob-factory missed those and would
+  offer their source bins for clearing.
+
 ### Carried over from fob-factory
 - Hosts, local or over SSH with a piped probe (nothing installed on the host).
 - `lines`, `stations status`, `workpieces list/show/watch/count/errors/cat/open/clear`,

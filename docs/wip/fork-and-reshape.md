@@ -1,6 +1,6 @@
 # al-control: fork from fob-factory and reshape
 
-## Status: IN PROGRESS (~30%)
+## Status: IN PROGRESS (~45%)
 
 al-control is the control room CLI: it watches and operates factories on any host, locally or
 over SSH. It is forked from FinOpsBricks' `fob-factory` with a fresh history (the old history
@@ -36,11 +36,15 @@ from inside its repo.
 - [x] NOTICE credits fob-factory (FinOpsBricks, Apache-2.0); fresh CHANGELOG at 0.1.0
 - [x] Tests pass (60)
 
-### Phase 2: Work on Assembly Line factories ❌
-- [ ] Process detection and `procs start` find `@assemblyline/lib-factory` factories
-- [ ] The clear guard skips bins drained by `lib-factory:move_files` (dry run on a real factory)
-- [ ] The probe returns `.orchestrator/factory.json`
-- [ ] Read-only checks against real factories, locally and on a remote host over SSH
+### Phase 2: Work on Assembly Line factories ✅
+- [x] Process detection and `procs start` find `@assemblyline/lib-factory` factories: `factories
+      list` and `procs list` find every running factory session, locally and over SSH
+- [x] The clear guard skips bins drained by `lib-factory:move_files`, including a `moves`
+      array (`src/utils/conveyors.js`, tested). On a scratch factory whose terminal output feeds
+      another line's conveyor, al-control skips the bin; fob-factory would have deleted it
+- [x] The probe returns `.orchestrator/factory.json` (`tests/probe.test.js`)
+- [x] Read-only checks on four real factories: `lines status/list/show`, `stations status`,
+      `workpieces count/errors`, dry-run `workpieces clear`
 
 ### Phase 3: Publish ❌
 - [ ] Final audit (names, hosts, gitleaks) of the tree

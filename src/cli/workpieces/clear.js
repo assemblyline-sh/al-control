@@ -1,6 +1,7 @@
 import { probe } from '../../transport.js';
 import { formatTable } from '../../utils/format.js';
 import { loadAges, loadLines } from '../../utils/factory-data.js';
+import { drainedBins } from '../../utils/conveyors.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -32,13 +33,7 @@ export async function clearHandler(argv, factory) {
   }
 
   // STATION/BIN → where a conveyor moves it; source_bin may name a sub-bin.
-  const drained_by = new Map();
-  for (const s of stations) {
-    for (const step of s.data.steps || []) {
-      if (step.slug !== 'lib-factory:move_files' || !step.config?.source_bin) continue;
-      drained_by.set(step.config.source_bin.split('/').slice(0, 2).join('/'), step.config.target_bin || '?');
-    }
-  }
+  const drained_by = drainedBins(stations.map((s) => s.data));
 
   // Every clearable bin in scope: done anywhere, output of a terminal station.
   const groups = [];
