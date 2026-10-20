@@ -14,9 +14,29 @@ build-box:
 
 The probe runs with that `node`, and its directory is prepended to `PATH` for both probe and pm2 commands. pm2 must therefore live in the same bin dir — true for `npm i -g pm2` under that nvm version. Find the value with `which node` in an interactive shell on the host.
 
-## Why not a login shell
+## pm2 runs in a login shell too
 
-`bash -lc` reads `.profile`, which typically sources `.bashrc` — whose first lines return early for non-interactive shells, before nvm loads. `bash -ic` prints job-control warnings without a TTY. An explicit path is the only reliable option.
+A login shell alone doesn't find nvm's node: `bash -lc` reads `.profile`, which typically
+sources `.bashrc`, whose first lines return early for non-interactive shells, before nvm
+loads. `bash -ic` prints job-control warnings without a TTY. So `node:` stays the way to
+find node and pm2.
+
+But a login shell is what gives a factory the PATH of a normal ssh session. `.profile`
+adds `~/.local/bin` (where claude's installer, `pip install --user`, pipx and uv put their
+binaries) and `~/bin`. A factory inherits the PATH of the `pm2 start` that launched it, so
+without this, a step that runs `claude` fails with ENOENT on the host while working in your
+own ssh session there. So pm2 commands run as:
+
+```sh
+exec "${SHELL:-/bin/sh}" -lc 'cd <root> && PATH=<dir of node:>:"$PATH" exec pm2 start …'
+```
+
+The `node:` dir goes inside the login shell, after `.profile` has run, so it stays first.
+The probe doesn't need this and runs without it.
+
+`restart` passes `--update-env`, or pm2 would restart with the environment it saved at the
+first start. `start` and `restart` end with `pm2 save`, so the host's pm2 brings the factory
+back after a reboot with the same environment.
 
 ## pm2 missing is never silent
 

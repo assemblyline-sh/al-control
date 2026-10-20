@@ -137,6 +137,24 @@ export function probeProcesses(host, query) {
 }
 
 /**
+ * The remote command for `pm2 <args>`, run in the user's login shell so the
+ * factories pm2 starts get the PATH of a normal ssh session: ~/.profile adds
+ * ~/.local/bin (claude, pipx, uv), ~/bin and the like. The `node:` dir goes
+ * first, inside the login shell, because nvm loads from .bashrc, which a
+ * login shell that isn't interactive skips.
+ *
+ * @param {import('./config.js').HostContext} host
+ * @param {string[]} args - pm2 arguments
+ * @param {string} [cwd] - absolute dir on the host
+ * @returns {string}
+ */
+export function remotePm2Command(host, args, cwd) {
+  const cd = cwd ? `cd ${shellQuote(cwd)} && ` : '';
+  const inner = `${cd}${remoteEnvPrefix(host)}exec pm2 ${args.map(shellQuote).join(' ')}`;
+  return `exec "\${SHELL:-/bin/sh}" -lc ${shellQuote(inner)}`;
+}
+
+/**
  * Run pm2 on the host with inherited stdio.
  *
  * @param {import('./config.js').HostContext} host
@@ -157,8 +175,7 @@ export function pm2(host, args, { cwd, interactive = false } = {}) {
     return;
   }
 
-  const cd = cwd ? `cd ${shellQuote(cwd)} && ` : '';
-  const remote_cmd = `${cd}${remoteEnvPrefix(host)}pm2 ${args.map(shellQuote).join(' ')}`;
+  const remote_cmd = remotePm2Command(host, args, cwd);
   const tty = interactive && Boolean(process.stdin.isTTY);
   const res = spawnSync('ssh', [...sshArgs(host, { tty }), remote_cmd], { stdio: 'inherit' });
 

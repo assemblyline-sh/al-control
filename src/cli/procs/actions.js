@@ -56,6 +56,7 @@ export async function startFactoryHandler(argv, factory) {
     process.exit(1);
   }
   pm2(factory.host, ['start', main, '--name', pm2_name], { cwd: root });
+  savePm2List(factory.host);
 }
 
 /**
@@ -73,7 +74,21 @@ export async function stopFactoryHandler(argv, factory) {
  * @param {import('../../config.js').FactoryContext} factory
  */
 export async function restartFactoryHandler(argv, factory) {
-  pm2(factory.host, ['restart', requirePm2Process(factory).pm2]);
+  // --update-env: without it pm2 restarts with the environment saved at the
+  // first start, so a PATH change on the host never reaches the factory.
+  pm2(factory.host, ['restart', requirePm2Process(factory).pm2, '--update-env']);
+  savePm2List(factory.host);
+}
+
+/**
+ * `pm2 save`, so the host's pm2 brings the factory back after a reboot with
+ * the environment it runs with now. Stop doesn't save, and wouldn't help:
+ * pm2 resurrects every saved app, stopped or not, so a stopped factory comes
+ * back after a reboot unless it is deleted from pm2.
+ * @param {import('../../config.js').HostContext} host
+ */
+function savePm2List(host) {
+  pm2(host, ['save']);
 }
 
 /**

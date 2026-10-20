@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Factories started on a remote host now get the PATH of a normal ssh session: pm2 runs in
+  the user's login shell, so `~/.profile` adds `~/.local/bin` and the like. Before, a
+  factory step calling `claude` (or anything in `~/.local/bin`) failed with ENOENT.
+- `procs restart` passes `--update-env`, so a restart picks up the current environment
+  instead of the one saved at the first start.
+- `procs start` and `procs restart` run `pm2 save`, so the host brings the factory back
+  after a reboot.
+
 ## [0.3.0] - 2026-10-19
 
 The first npm release after 0.1.0; it includes 0.2.0.
