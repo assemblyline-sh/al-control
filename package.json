@@ -1,6 +1,6 @@
 {
   "name": "@assemblyline/al-control",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "The control room CLI for Assembly Line: watch and operate factories across hosts, locally or over SSH",
   "type": "module",
   "bin": {

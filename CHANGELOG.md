@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-21
+
 ### Fixed
 - Factories started on a remote host now get the PATH of a normal ssh session: pm2 runs in
   the user's login shell, so `~/.profile` adds `~/.local/bin` and the like. Before, a
