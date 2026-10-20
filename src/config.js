@@ -104,9 +104,9 @@ export function loadConfig() {
       if (host.ssh.startsWith('-')) throw new Error(`Host '${name}' has an invalid ssh alias '${host.ssh}'.`);
     }
     for (const [w, entry] of Object.entries(host.factories)) {
-      const ok = typeof entry === 'string'
+      const is_ok = typeof entry === 'string'
         || (entry && typeof entry.path === 'string' && (entry.keep === undefined || (Array.isArray(entry.keep) && entry.keep.every((k) => /^[^/]+\/(done|output)$/.test(k)))));
-      if (!ok) throw new Error(`Factory '${w}' on host '${name}' in ${file} must be a path, or {path, keep: [STATION/done|output, ...]}.`);
+      if (!is_ok) throw new Error(`Factory '${w}' on host '${name}' in ${file} must be a path, or {path, keep: [STATION/done|output, ...]}.`);
     }
   }
   return cfg;

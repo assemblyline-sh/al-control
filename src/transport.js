@@ -176,8 +176,8 @@ export function pm2(host, args, { cwd, interactive = false } = {}) {
   }
 
   const remote_cmd = remotePm2Command(host, args, cwd);
-  const tty = interactive && Boolean(process.stdin.isTTY);
-  const res = spawnSync('ssh', [...sshArgs(host, { tty }), remote_cmd], { stdio: 'inherit' });
+  const is_tty = interactive && Boolean(process.stdin.isTTY);
+  const res = spawnSync('ssh', [...sshArgs(host, { tty: is_tty }), remote_cmd], { stdio: 'inherit' });
 
   if (res.error) throw new Error(`Could not run ssh: ${res.error.message}`);
   if (res.status === 255) throw new Error(`ssh to ${host.name} (${host.ssh}) failed`);

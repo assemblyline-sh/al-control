@@ -27,12 +27,12 @@ const CLEAR_AND_HOME = '\x1b[2J\x1b[3J\x1b[H';
 
 export async function watchRender({ render, interval_secs = DEFAULT_WATCH_INTERVAL_SECS }) {
   process.on('SIGINT', () => { process.stdout.write('\n'); process.exit(0); });
-  let first = true;
+  let is_first = true;
   while (true) {
-    if (process.stdout.isTTY && !first) {
+    if (process.stdout.isTTY && !is_first) {
       process.stdout.write(CLEAR_AND_HOME);
     }
-    first = false;
+    is_first = false;
     await render();
     console.log(`\nupdated ${new Date().toLocaleTimeString()} — refresh every ${interval_secs}s (Ctrl-C to stop)`);
     await new Promise((r) => setTimeout(r, interval_secs * 1000));
