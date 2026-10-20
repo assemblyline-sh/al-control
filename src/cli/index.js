@@ -103,7 +103,7 @@ function factoryOption(yargs) {
   });
 }
 
-const jsonOption = { describe: 'Output raw JSON', type: 'boolean' };
+const json_option = { describe: 'Output raw JSON', type: 'boolean' };
 const watchOptions = (yargs) => yargs
   .option('watch', { describe: 'Re-render on an interval. Mutually exclusive with --json.', type: 'boolean' })
   .option('interval', { describe: 'Watch refresh interval in seconds (default 1)', type: 'number' });
@@ -123,27 +123,27 @@ export function run(args) {
     .option('host', { describe: 'Target host for this command (overrides current_host)', type: 'string', global: true })
     .command('hosts', 'Configured hosts; pick the one commands target', (yargs) => yargs
       .usage('$0 hosts <action>')
-      .command('list', 'List configured hosts', (y) => localOptions(y).option('json', jsonOption), listHostsHandler)
+      .command('list', 'List configured hosts', (y) => localOptions(y).option('json', json_option), listHostsHandler)
       .command('use <name>', 'Set the current host', (y) => y.positional('name', { describe: 'Host name from the config', type: 'string' }), useHostHandler)
       .command('current', 'Print the current host', {}, currentHostHandler)
       .demandCommand(1, 'Specify an action: list, use, current'))
     .command('factories', 'Factories configured on the current host', (yargs) => yargs
       .usage('$0 factories <action>')
-      .command('list', 'Configured factories and whether each is running', (y) => localOptions(y).option('json', jsonOption), withHost(listFactoriesHandler))
+      .command('list', 'Configured factories and whether each is running', (y) => localOptions(y).option('json', json_option), withHost(listFactoriesHandler))
       .demandCommand(1, 'Specify an action: list'))
     .command('lines', 'Inspect a factory\'s assembly lines', (yargs) => yargs
       .usage('$0 lines <action> -f <factory> [options]')
-      .command('list', 'Lines and their stations (definitional)', (y) => factoryOption(y).option('json', jsonOption), withFactory(listLinesHandler))
+      .command('list', 'Lines and their stations (definitional)', (y) => factoryOption(y).option('json', json_option), withFactory(listLinesHandler))
       .command(
         'show <line>',
         'Stations in dependency order + conveyor topology (definitional)',
-        (y) => factoryOption(y.positional('line', { describe: 'Line code (e.g. VM)', type: 'string' })).option('json', jsonOption),
+        (y) => factoryOption(y.positional('line', { describe: 'Line code (e.g. VM)', type: 'string' })).option('json', json_option),
         withFactory(showLineHandler),
       )
       .command(
         'status [line]',
         'Live bin counts. No line = per-line summary.',
-        (y) => watchOptions(factoryOption(y.positional('line', { describe: 'Line code to drill into', type: 'string' })).option('json', jsonOption)),
+        (y) => watchOptions(factoryOption(y.positional('line', { describe: 'Line code to drill into', type: 'string' })).option('json', json_option)),
         withFactory(statusLineHandler),
       )
       .demandCommand(1, 'Specify an action: list, show, status'))
@@ -152,17 +152,17 @@ export function run(args) {
       .command(
         'status <id>',
         'One station\'s bins and the workpieces in them',
-        (y) => watchOptions(factoryOption(y.positional('id', { describe: 'Station short_code (e.g. VM3)', type: 'string' })).option('json', jsonOption)),
+        (y) => watchOptions(factoryOption(y.positional('id', { describe: 'Station short_code (e.g. VM3)', type: 'string' })).option('json', json_option)),
         withFactory(statusStationHandler),
       )
       .demandCommand(1, 'Specify an action: status'))
     .command('workpieces', 'Inspect a factory\'s workpieces', (yargs) => yargs
       .usage('$0 workpieces <action> -f <factory> [options]')
-      .command('list', 'Workpieces on disk: position, last event, folder', (y) => scopeOptions(factoryOption(y)).option('json', jsonOption), withFactory(listWorkpiecesHandler))
+      .command('list', 'Workpieces on disk: position, last event, folder', (y) => scopeOptions(factoryOption(y)).option('json', json_option), withFactory(listWorkpiecesHandler))
       .command(
         'show <id>',
         'One workpiece and its journey (a substring matching several shows the list)',
-        (y) => factoryOption(y.positional('id', { describe: 'Workpiece id (exact or substring)', type: 'string' })).option('json', jsonOption),
+        (y) => factoryOption(y.positional('id', { describe: 'Workpiece id (exact or substring)', type: 'string' })).option('json', json_option),
         withFactory(showWorkpieceHandler),
       )
       .command(
@@ -177,7 +177,7 @@ export function run(args) {
         'FAILED / DONE / FINISHED counts per factory, line or station (all factories unless -f)',
         (y) => optionalFactoryOption(y.positional('bin', { describe: 'Only this count', choices: ['failed', 'done', 'finished'] }))
           .option('by', { describe: 'Roll up to this level', choices: ['factory', 'line', 'station'], default: 'station' })
-          .option('json', jsonOption),
+          .option('json', json_option),
         withFactories(countWorkpiecesHandler),
       )
       .command(
@@ -186,7 +186,7 @@ export function run(args) {
         (y) => optionalFactoryOption(y)
           .option('line', { describe: 'Only this line', type: 'string' })
           .option('station', { describe: 'Only this station', type: 'string' })
-          .option('json', jsonOption),
+          .option('json', json_option),
         withFactories(errorsHandler),
       )
       .command(
@@ -235,7 +235,7 @@ export function run(args) {
       .demandCommand(1, 'Specify an action: list, show, watch, count, errors, cat, open, clear, requeue'))
     .command('procs', 'Factory processes on the current host (pm2)', (yargs) => yargs
       .usage('$0 procs <action> [-f <factory>]')
-      .command('list', 'Every running factory on the host', (y) => localOptions(y).option('json', jsonOption), withHost(listProcsHandler))
+      .command('list', 'Every running factory on the host', (y) => localOptions(y).option('json', json_option), withHost(listProcsHandler))
       .command('start', 'Start a factory under pm2', factoryOption, withFactory(startFactoryHandler, { frame: false }))
       .command('stop', 'Stop a pm2-managed factory', factoryOption, withFactory(stopFactoryHandler, { frame: false }))
       .command('restart', 'Restart a pm2-managed factory', factoryOption, withFactory(restartFactoryHandler, { frame: false }))

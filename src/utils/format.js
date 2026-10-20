@@ -10,8 +10,8 @@
 export function formatHeader(label, id, status) {
   const left = `${label}: ${id}`;
   if (!status) return left;
-  const minGap = 4;
-  const width = Math.max(left.length + minGap + status.length, 60);
+  const min_gap = 4;
+  const width = Math.max(left.length + min_gap + status.length, 60);
   return left + ' '.repeat(width - left.length - status.length) + status;
 }
 
@@ -19,8 +19,8 @@ export function formatHeader(label, id, status) {
  * Format a label: value field with aligned label.
  * "Name:      Monthly Debt & Equity Monitoring"
  */
-export function formatField(label, value, labelWidth = 0) {
-  const padded = (label + ':').padEnd(labelWidth || label.length + 1);
+export function formatField(label, value, label_width = 0) {
+  const padded = (label + ':').padEnd(label_width || label.length + 1);
   return `${padded}  ${value ?? '—'}`;
 }
 
@@ -40,13 +40,13 @@ export function formatTable(headers, rows) {
     Math.max(h.length, ...rows.map(r => (r[i] || '').length))
   );
 
-  const headerLine = headers.map((h, i) => h.padEnd(widths[i])).join('  ');
-  const separator = '-'.repeat(headerLine.length);
-  const dataLines = rows.map(row =>
+  const header_line = headers.map((h, i) => h.padEnd(widths[i])).join('  ');
+  const separator = '-'.repeat(header_line.length);
+  const data_lines = rows.map(row =>
     row.map((cell, i) => (cell || '—').padEnd(widths[i])).join('  ')
   );
 
-  return [headerLine, separator, ...dataLines].join('\n');
+  return [header_line, separator, ...data_lines].join('\n');
 }
 
 /**
@@ -137,14 +137,14 @@ export function formatDuration(start, end) {
   if (minutes < 60) return `${minutes}m`;
 
   const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
+  const remaining_minutes = minutes % 60;
   if (hours < 24) {
-    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    return remaining_minutes > 0 ? `${hours}h ${remaining_minutes}m` : `${hours}h`;
   }
 
   const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  const remaining_hours = hours % 24;
+  return remaining_hours > 0 ? `${days}d ${remaining_hours}h` : `${days}d`;
 }
 
 /**
