@@ -29,7 +29,7 @@ afterEach(() => {
 describe('familyRoot', () => {
   const tempHome = () => mkdtempSync(path.join(tmpdir(), 'al-control-home-'));
 
-  test('moves ~/.assemblyline to ~/.al and leaves a symlink', () => {
+  test('moves ~/.assemblyline to ~/.al and leaves nothing behind', () => {
     const home = tempHome();
     mkdirSync(path.join(home, '.assemblyline', 'al-control'), { recursive: true });
     writeFileSync(path.join(home, '.assemblyline', 'al-control', 'config.yml'), VALID);
@@ -37,8 +37,7 @@ describe('familyRoot', () => {
     expect(familyRoot(home)).toBe(path.join(home, '.al'));
 
     expect(readFileSync(path.join(home, '.al', 'al-control', 'config.yml'), 'utf8')).toBe(VALID);
-    expect(lstatSync(path.join(home, '.assemblyline')).isSymbolicLink()).toBe(true);
-    expect(existsSync(path.join(home, '.assemblyline', 'al-control', 'config.yml'))).toBe(true);
+    expect(existsSync(path.join(home, '.assemblyline'))).toBe(false);
   });
 
   test('leaves both alone when ~/.al already exists', () => {

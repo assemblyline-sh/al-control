@@ -23,7 +23,7 @@
  * Override the directory with AL_CONTROL_CONFIG_DIR (used by tests).
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, symlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve, basename } from 'node:path';
 import yaml from 'js-yaml';
@@ -31,8 +31,8 @@ import yaml from 'js-yaml';
 export const LOCAL_HOST = 'local';
 
 /**
- * The family root, ~/.al. On the first run after the rename from ~/.al
- * the whole folder moves here, keeping a symlink for tools not yet updated.
+ * The family root, ~/.al. On the first run after the rename from ~/.assemblyline
+ * the whole folder moves here.
  * The name is short for the SSH socket: see decision 0007.
  * @param {string} [home]
  * @returns {string}
@@ -43,9 +43,8 @@ export function familyRoot(home = homedir()) {
   if (!existsSync(root) && existsSync(legacy)) {
     try {
       renameSync(legacy, root);
-      symlinkSync('.al', legacy);
     } catch {
-      // Another process moved it first, or the OS refused the symlink.
+      // Another process moved it first.
     }
   }
   return root;

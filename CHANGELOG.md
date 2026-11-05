@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-05
+
+### Changed
+
+- The move from `~/.assemblyline` to `~/.al` no longer leaves a symlink at the old path. Update
+  al-control, al-orc and control-room together. (decision 0008)
+
 ## [0.4.0] - 2026-11-05
 
 ### Changed
