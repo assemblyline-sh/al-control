@@ -13,10 +13,10 @@
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import path from 'node:path';
 
 import { runQuery } from './probe.js';
+import { familyRoot } from './config.js';
 
 const PROBE_SOURCE = readFileSync(new URL('./probe.js', import.meta.url), 'utf8');
 
@@ -44,7 +44,7 @@ export function sshArgs(host, { tty = false } = {}) {
   // Sockets live under the home dir even when AL_CONTROL_CONFIG_DIR points
   // elsewhere: unix socket paths cap at 104 bytes, and %C expands to 40 hex
   // chars. If even that is too long, go without multiplexing.
-  const socket_dir = path.join(homedir(), '.assemblyline', 'al-control');
+  const socket_dir = path.join(familyRoot(), 'al-control');
   const control_path = path.join(socket_dir, 'ssh-%C');
   const multiplex = control_path.length - 2 + 40 < 104;
   if (multiplex) mkdirSync(socket_dir, { recursive: true });

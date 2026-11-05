@@ -17,7 +17,7 @@ al-control workpieces errors              # why things failed, on every factory
 ## How it works
 
 ```
-                    ~/.assemblyline/al-control/config.yml
+                    ~/.al/al-control/config.yml
                     hosts → factories → paths
                                │
                     al-control (your machine)
@@ -43,7 +43,7 @@ Node.js 18+, macOS or Linux.
 
 ## Config
 
-`~/.assemblyline/al-control/config.yml`:
+`~/.al/al-control/config.yml`:
 
 ```yaml
 current_host: local

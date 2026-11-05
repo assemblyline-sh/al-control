@@ -2,7 +2,7 @@
 
 The first remote command opens one SSH connection and leaves it running in the background; later commands to the same host reuse it. It closes after 10 minutes unused.
 
-Set in `sshArgs()` (`src/transport.js`): `ControlMaster=auto`, `ControlPersist=10m`, `ControlPath=~/.assemblyline/al-control/ssh-%C`.
+Set in `sshArgs()` (`src/transport.js`): `ControlMaster=auto`, `ControlPersist=10m`, `ControlPath=~/.al/al-control/ssh-%C`.
 
 ## Why
 
@@ -11,7 +11,7 @@ Set in `sshArgs()` (`src/transport.js`): `ControlMaster=auto`, `ControlPersist=1
 
 ## Socket location
 
-Sockets always live under `$HOME/.assemblyline/al-control/`, even when `AL_CONTROL_CONFIG_DIR` points elsewhere. Unix socket paths cap at 104 bytes and `%C` expands to 40 hex chars; a deep override dir made ssh fail with `ControlPath too long`. If even the `$HOME` path is too long, sharing is skipped.
+Sockets always live under `$HOME/.al/al-control/`, even when `AL_CONTROL_CONFIG_DIR` points elsewhere. Unix socket paths cap at 104 bytes and `%C` expands to 40 hex chars; a deep override dir made ssh fail with `ControlPath too long`. That cap is also why the root is the short `.al` ([decision 0007](/docs/decisions/0007-config-root-is-dot-al.md)). If even the `$HOME` path is too long, sharing is skipped.
 
 ## Living with it
 
@@ -20,7 +20,7 @@ Sockets always live under `$HOME/.assemblyline/al-control/`, even when `AL_CONTR
 - **It can go stale** after sleep or a network change: the next command may hang briefly or fail once; rerunning opens a fresh connection.
 - **Close it** — e.g. to force a new Tailscale check:
   ```bash
-  ssh -O exit -o ControlPath=$HOME/.assemblyline/al-control/ssh-%C <alias>
+  ssh -O exit -o ControlPath=$HOME/.al/al-control/ssh-%C <alias>
   ```
 
 ## Related Notes

@@ -1,5 +1,5 @@
 /**
- * Config store — ~/.assemblyline/al-control/config.yml — and resolution of which host
+ * Config store — ~/.al/al-control/config.yml — and resolution of which host
  * and factory the current command targets.
  *
  * Shape:
@@ -23,16 +23,37 @@
  * Override the directory with AL_CONTROL_CONFIG_DIR (used by tests).
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve, basename } from 'node:path';
 import yaml from 'js-yaml';
 
 export const LOCAL_HOST = 'local';
 
+/**
+ * The family root, ~/.al. On the first run after the rename from ~/.al
+ * the whole folder moves here, keeping a symlink for tools not yet updated.
+ * The name is short for the SSH socket: see decision 0007.
+ * @param {string} [home]
+ * @returns {string}
+ */
+export function familyRoot(home = homedir()) {
+  const root = join(home, '.al');
+  const legacy = join(home, '.assemblyline');
+  if (!existsSync(root) && existsSync(legacy)) {
+    try {
+      renameSync(legacy, root);
+      symlinkSync('.al', legacy);
+    } catch {
+      // Another process moved it first, or the OS refused the symlink.
+    }
+  }
+  return root;
+}
+
 /** @returns {string} */
 export function configDir() {
-  return process.env.AL_CONTROL_CONFIG_DIR || join(homedir(), '.assemblyline', 'al-control');
+  return process.env.AL_CONTROL_CONFIG_DIR || join(familyRoot(), 'al-control');
 }
 
 /** @returns {string} */

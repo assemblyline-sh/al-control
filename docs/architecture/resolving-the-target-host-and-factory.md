@@ -29,7 +29,7 @@ Hints printed by handlers ("Run `al-control lines status …`") reuse `factory.f
 
 ## Config dir override
 
-`AL_CONTROL_CONFIG_DIR` replaces `~/.assemblyline/al-control/` for the config file (tests use it). SSH sockets ignore it — see [SSH Connection Sharing](/docs/architecture/ssh-connection-sharing.md).
+`AL_CONTROL_CONFIG_DIR` replaces `~/.al/al-control/` for the config file (tests use it). SSH sockets ignore it — see [SSH Connection Sharing](/docs/architecture/ssh-connection-sharing.md).
 
 ## Related Notes
 

@@ -1,8 +1,8 @@
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, lstatSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { loadConfig, resolveHost, resolveFactory, resolveFactories, useHost } from '../src/config.js';
+import { familyRoot, loadConfig, resolveHost, resolveFactory, resolveFactories, useHost } from '../src/config.js';
 
 function writeConfig(yaml_text) {
   const dir = mkdtempSync(path.join(tmpdir(), 'al-control-cfg-'));
@@ -24,6 +24,40 @@ hosts:
 
 afterEach(() => {
   delete process.env.AL_CONTROL_CONFIG_DIR;
+});
+
+describe('familyRoot', () => {
+  const tempHome = () => mkdtempSync(path.join(tmpdir(), 'al-control-home-'));
+
+  test('moves ~/.assemblyline to ~/.al and leaves a symlink', () => {
+    const home = tempHome();
+    mkdirSync(path.join(home, '.assemblyline', 'al-control'), { recursive: true });
+    writeFileSync(path.join(home, '.assemblyline', 'al-control', 'config.yml'), VALID);
+
+    expect(familyRoot(home)).toBe(path.join(home, '.al'));
+
+    expect(readFileSync(path.join(home, '.al', 'al-control', 'config.yml'), 'utf8')).toBe(VALID);
+    expect(lstatSync(path.join(home, '.assemblyline')).isSymbolicLink()).toBe(true);
+    expect(existsSync(path.join(home, '.assemblyline', 'al-control', 'config.yml'))).toBe(true);
+  });
+
+  test('leaves both alone when ~/.al already exists', () => {
+    const home = tempHome();
+    mkdirSync(path.join(home, '.al'));
+    mkdirSync(path.join(home, '.assemblyline'));
+
+    familyRoot(home);
+
+    expect(lstatSync(path.join(home, '.assemblyline')).isDirectory()).toBe(true);
+  });
+
+  test('a fresh machine moves nothing', () => {
+    const home = tempHome();
+
+    expect(familyRoot(home)).toBe(path.join(home, '.al'));
+
+    expect(existsSync(path.join(home, '.assemblyline'))).toBe(false);
+  });
 });
 
 describe('loadConfig', () => {
