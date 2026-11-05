@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `~/.assemblyline` symlink for tools not yet updated. On a long home path this also keeps the SSH
   socket under the macOS limit (decision 0007).
 
+### Fixed
+
+- SSH no longer fails with "too long for Unix domain socket" on a long home path. Sockets are named
+  by a 12-character hash of the host's alias instead of ssh's 40-character `%C`, and the length
+  check counts the 17 characters ssh adds to its temporary socket. Sharing now works for home paths
+  up to 54 characters and is skipped beyond that.
+
 ## [0.3.1] - 2026-10-21
 
 ### Fixed

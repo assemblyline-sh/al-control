@@ -12,6 +12,7 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -37,16 +38,19 @@ export function shellQuote(s) {
  * a handshake per tick. `--` stops option parsing before the alias.
  *
  * @param {import('./config.js').HostContext} host
- * @param {{tty?: boolean}} [opts]
+ * @param {{tty?: boolean, home?: string}} [opts]
  * @returns {string[]}
  */
-export function sshArgs(host, { tty = false } = {}) {
+export function sshArgs(host, { tty = false, home } = {}) {
   // Sockets live under the home dir even when AL_CONTROL_CONFIG_DIR points
-  // elsewhere: unix socket paths cap at 104 bytes, and %C expands to 40 hex
-  // chars. If even that is too long, go without multiplexing.
-  const socket_dir = path.join(familyRoot(), 'al-control');
-  const control_path = path.join(socket_dir, 'ssh-%C');
-  const multiplex = control_path.length - 2 + 40 < 104;
+  // elsewhere: unix socket paths cap at 104 bytes, and ssh binds
+  // <path>.XXXXXXXXXXXXXXXX (17 more) first. %C is 40 hex chars and can't be
+  // shortened, so the name is our own hash of the alias, the same one
+  // control-room builds. If even that is too long, go without multiplexing.
+  const socket_dir = path.join(familyRoot(home), 'al-control');
+  const socket_name = createHash('sha256').update(host.ssh).digest('hex').slice(0, 12);
+  const control_path = path.join(socket_dir, `ssh-${socket_name}`);
+  const multiplex = control_path.length + 17 < 104;
   if (multiplex) mkdirSync(socket_dir, { recursive: true });
   return [
     '-o', 'BatchMode=yes',

@@ -30,6 +30,41 @@ describe('sshArgs', () => {
   test('tty only when asked', () => {
     expect(sshArgs(host, { tty: true })).toContain('-t');
   });
+
+  describe('socket', () => {
+    // Not os.tmpdir(): on macOS it's long enough to skip sharing by itself.
+    let home;
+    const controlPath = (args) => args.find((a) => a.startsWith('ControlPath='));
+
+    beforeEach(() => {
+      home = mkdtempSync('/tmp/al-');
+    });
+    afterEach(() => {
+      rmSync(home, { recursive: true, force: true });
+    });
+
+    test('is named by a 12-character hash of the alias, the value control-room also tests', () => {
+      expect(controlPath(sshArgs(host, { home }))).toBe(`ControlPath=${home}/.al/al-control/ssh-61399a89f694`);
+    });
+
+    test('differs per user on one host', () => {
+      const bob = sshArgs({ ...host, ssh: 'bob@prod-box' }, { home });
+      const carol = sshArgs({ ...host, ssh: 'carol@prod-box' }, { home });
+      expect(controlPath(bob)).not.toBe(controlPath(carol));
+    });
+
+    test('is shared up to a 54-character home, where ssh\'s temporary socket is 103', () => {
+      const long_home = path.join(home, 'x'.repeat(54 - home.length - 1));
+      expect(controlPath(sshArgs(host, { home: long_home }))).toBeDefined();
+    });
+
+    test('is skipped past that, so ssh never sees a path it would refuse', () => {
+      const long_home = path.join(home, 'x'.repeat(55 - home.length - 1));
+      const args = sshArgs(host, { home: long_home });
+      expect(controlPath(args)).toBeUndefined();
+      expect(args).not.toContain('ControlMaster=auto');
+    });
+  });
 });
 
 describe('remotePm2Command', () => {
