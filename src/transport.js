@@ -50,11 +50,11 @@ export function sshArgs(host, { tty = false, home } = {}) {
   const socket_dir = path.join(familyRoot(home), 'al-control');
   const socket_name = createHash('sha256').update(host.ssh).digest('hex').slice(0, 12);
   const control_path = path.join(socket_dir, `ssh-${socket_name}`);
-  const multiplex = control_path.length + 17 < 104;
-  if (multiplex) mkdirSync(socket_dir, { recursive: true });
+  const should_multiplex = control_path.length + 17 < 104;
+  if (should_multiplex) mkdirSync(socket_dir, { recursive: true });
   return [
     '-o', 'BatchMode=yes',
-    ...(multiplex ? ['-o', 'ControlMaster=auto', '-o', `ControlPath=${control_path}`, '-o', 'ControlPersist=10m'] : []),
+    ...(should_multiplex ? ['-o', 'ControlMaster=auto', '-o', `ControlPath=${control_path}`, '-o', 'ControlPersist=10m'] : []),
     ...(tty ? ['-t'] : []),
     '--', host.ssh,
   ];

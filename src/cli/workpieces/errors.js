@@ -15,7 +15,7 @@ const ERROR_COL = 80;
  * @param {{host: import('../../config.js').HostContext, factories: import('../../config.js').FactoryContext[]}} scope
  */
 export async function errorsHandler(argv, { factories }) {
-  const host_wide = factories.length > 1;
+  const is_host_wide = factories.length > 1;
   const groups = new Map();
 
   let orphan_total = 0;
@@ -35,7 +35,7 @@ export async function errorsHandler(argv, { factories }) {
       const key = errorKey(err);
       if (!groups.has(key)) groups.set(key, { key, count: 0, where: {}, workpieces: [], last_failed_at: null });
       const g = groups.get(key);
-      const where = host_wide ? `${factory.name}/${f.station}` : f.station;
+      const where = is_host_wide ? `${factory.name}/${f.station}` : f.station;
       g.count += 1;
       g.where[where] = (g.where[where] ?? 0) + 1;
       g.workpieces.push({ factory: factory.name, id: f.id, station: f.station, failed_at: err?.failed_at ?? null, message: err?.message ?? null, orphan: f.orphan });
